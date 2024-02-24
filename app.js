@@ -2,6 +2,7 @@ const express = require('express')
 const app = express()
 const produtos = require('./routes/produtos')
 const usuario = require('./routes/usuarios')
+const newTable = require('./routes/newTable')
 
 const morgan = require('morgan')
 require('dotenv/config')
@@ -22,6 +23,7 @@ app.use(express.json())
 //Rotas
 app.use('/produtos', produtos)
 app.use('/usuarios', usuario)
+app.use('/newtable',newTable)
 
 
 //Verifica a conexão com servidor e mostra as rotas disponíveis
