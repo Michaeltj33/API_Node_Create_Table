@@ -30,14 +30,7 @@ exports.CreateTable = async (req, res) => {
 
         //verefica se no body foi enviado 'table'
         if (!req.body.table) {
-            return res.status(401).json({
-                mensagem: "'Table' não encontrado",
-                table: {
-                    table: "nome da tabela",
-                    id_teste: "int not null auto_increment Primary key",
-                    etc: "pode colocar quantos nomes quiser"
-                }
-            })
+            setTable(res)
         }
 
         //Verifica se a tabela já existe no banco de dados
@@ -70,6 +63,72 @@ exports.CreateTable = async (req, res) => {
     } catch (error) {
         return res.status(500).json({ error: error })
     }
+}
 
+exports.droTable = async (req, res) => {
+    try {
+        //verefica se no body foi enviado 'table'
+        if (!req.body.table) {
+            setTable(res)
+        }
+
+        //Verifica se a tabela já existe no banco de dados
+        const verify = "SELECT TABLE_NAME FROM information_schema.tables WHERE table_NAME ='" + req.body.table + "'"
+        const resp = await mysql.execute(verify)
+        if (!resp.length > 0) {
+            return res.status(404).json({
+                mensagem: "Tabela não encontrada"
+            })
+        }
+
+        const query = "DROP TABLE " + req.body.table
+        await mysql.execute(query)
+        const response = {
+            mensagem: "Tabela removida com Sucesso"
+        }
+        return res.status(200).json(response)
+
+    } catch (error) {
+        return res.status(500).json({ error: error })
+    }
+}
+
+exports.truncate = async (req, res) => {
+    try {
+        //verefica se no body foi enviado 'table'
+        if (!req.body.table) {
+            setTable(res)
+        }
+
+        //Verifica se a tabela já existe no banco de dados
+        const verify = "SELECT TABLE_NAME FROM information_schema.tables WHERE table_NAME ='" + req.body.table + "'"
+        const resp = await mysql.execute(verify)
+        if (!resp.length > 0) {
+            return res.status(404).json({
+                mensagem: "Tabela não encontrada"
+            })
+        }
+
+        const query = "truncate " + req.body.table
+        await mysql.execute(query)
+        const response = {
+            mensagem : "Dados da tabela apagada com Sucesso"
+        }
+
+        return res.status(200).json(response)
+    } catch (error) {
+        return res.status(500).json({ error: error })
+    }
+}
+
+function setTable(res) {
+    return res.status(401).json({
+        mensagem: "'Table' não encontrado",
+        Createtable: {
+            table: "nome da tabela",
+            id_teste: "int not null auto_increment Primary key",
+            etc: "pode colocar quantos nomes quiser"
+        }
+    })
 }
 
