@@ -33,6 +33,7 @@ app.get('/',(_,res)=>{
         Rotas: {
             produtos: "http://localhost:3000/produtos",
             usuario: "http://localhost:3000/usuarios",           
+            CreateTble: "http://localhost:3000/newtable",           
 
         }
     })

@@ -1,6 +1,6 @@
 const mysql = require('../database/mysql')
 
-exports.getTable = async (req, res) => {
+exports.showTable = async (req, res) => {
     try {
 
         if (req.query.table) {
@@ -35,10 +35,15 @@ exports.CreateTable = async (req, res) => {
 
         //Verifica se a tabela já existe no banco de dados
         const verify = "SELECT TABLE_NAME FROM information_schema.tables WHERE table_NAME ='" + req.body.table + "'"
-        const resp = await mysql.execute(verify)        
+        const resp = await mysql.execute(verify)
         if (resp.length > 0) {
             return res.status(409).json({
-                mensagem: "Tabela já existe em nosso banco de dados"
+                mensagem: "Tabela já existe em nosso banco de dados",
+                response: {
+                    tipo: "POST",
+                    mensagem: "verifica todas as informações da tabela",
+                    url: "http://" + process.env.HOST + ":" + process.env.PORTDB + "/newtable?table=" + req.body.table
+                }
             })
         }
 
@@ -65,7 +70,7 @@ exports.CreateTable = async (req, res) => {
     }
 }
 
-exports.droTable = async (req, res) => {
+exports.dropTable = async (req, res) => {
     try {
         //verefica se no body foi enviado 'table'
         if (!req.body.table) {
@@ -100,7 +105,7 @@ exports.truncate = async (req, res) => {
             setTable(res)
         }
 
-        //Verifica se a tabela já existe no banco de dados
+        //Verifica se a tabela já existe no banco de dados        
         const verify = "SELECT TABLE_NAME FROM information_schema.tables WHERE table_NAME ='" + req.body.table + "'"
         const resp = await mysql.execute(verify)
         if (!resp.length > 0) {
@@ -112,7 +117,7 @@ exports.truncate = async (req, res) => {
         const query = "truncate " + req.body.table
         await mysql.execute(query)
         const response = {
-            mensagem : "Dados da tabela apagada com Sucesso"
+            mensagem: "Dados da tabela apagada com Sucesso"
         }
 
         return res.status(200).json(response)
@@ -120,6 +125,108 @@ exports.truncate = async (req, res) => {
         return res.status(500).json({ error: error })
     }
 }
+
+exports.addColumn = async (req, res) => {
+    try {
+        //verefica se no body foi enviado 'table'
+        if (!req.body.table) {
+            setTable(res)
+        }
+
+        //Verifica se a tabela já existe no banco de dados
+        const verify = "SELECT TABLE_NAME FROM information_schema.tables WHERE table_NAME ='" + req.body.table + "'"
+        const resp = await mysql.execute(verify)
+        if (!resp.length > 0) {
+            return res.status(404).json({
+                mensagem: "Tabela não encontrada"
+            })
+        }
+
+        const query = "ALTER TABLE " + req.body.table + " ADD COLUMN " + req.body.coluna
+        await mysql.execute(query)
+        return res.status(201).json({
+            mensagem: "Coluna Adiciona com Sucesso",
+            response: {
+                tipo: "POST",
+                mensagem: "verifica todas as informações da tabela",
+                url: "http://" + process.env.HOST + ":" + process.env.PORTDB + "/newtable?table=" + req.body.table
+            }
+        })
+
+
+    } catch (error) {
+        return res.status(500).json({ error: error })
+    }
+}
+
+exports.dropColumn = async (req, res) => {
+    try {
+        //verefica se no body foi enviado 'table'
+        if (!req.body.table) {
+            setTable(res)
+        }
+
+        //Verifica se a tabela já existe no banco de dados
+        const verify = "SELECT TABLE_NAME FROM information_schema.tables WHERE table_NAME ='" + req.body.table + "'"
+        const resp = await mysql.execute(verify)
+        if (!resp.length > 0) {
+            return res.status(404).json({
+                mensagem: "Tabela não encontrada"
+            })
+        }
+
+        const query = "ALTER TABLE " + req.body.table + " DROP COLUMN " + req.body.coluna
+        await mysql.execute(query)
+        return res.status(201).json({
+            mensagem: "Coluna Removida com Sucesso",
+            response: {
+                tipo: "POST",
+                mensagem: "verifica todas as informações da tabela",
+                url: "http://" + process.env.HOST + ":" + process.env.PORTDB + "/newtable?table=" + req.body.table
+            }
+        })
+
+
+
+    } catch (error) {
+        return res.status(500).json({ error: error })
+    }
+}
+
+exports.renameTable = async (req, res) => {
+    try {
+        //verefica se no body foi enviado 'table'
+        if (!req.body.table) {
+            setTable(res)
+        }
+
+        //Verifica se a tabela já existe no banco de dados
+        const verify = "SELECT TABLE_NAME FROM information_schema.tables WHERE table_NAME ='" + req.body.table + "'"
+        const resp = await mysql.execute(verify)
+        if (!resp.length > 0) {
+            return res.status(404).json({
+                mensagem: "Tabela não encontrada"
+            })
+        }
+
+        const query = "ALTER TABLE " + req.body.table + " RENAME TO " + req.body.rename
+        await mysql.execute(query)
+        const response = {
+            mensagem: "Tabela alterado com Sucesso",
+            request : {
+                tipo : "GET",
+                mensagem: "verifica todas as informações da tabela",
+                url: "http://" + process.env.HOST + ":" + process.env.PORTDB + "/newtable?table=" + req.body.rename
+
+            }
+        }
+        return res.status(202).json(response)
+
+    } catch (error) {
+        return res.status(500).json({ error: error })
+    }
+}
+
 
 function setTable(res) {
     return res.status(401).json({
