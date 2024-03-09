@@ -21,7 +21,8 @@ exports.showTable = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             resposta: "Tabela não Encontrada",
-            error: error
+            error: error,
+            tabelasDisponiveis: await mysql.execute("SHOW TABLES")
         })
     }
 }
@@ -84,7 +85,8 @@ exports.dropTable = async (req, res) => {
         const resp = await mysql.execute(verify)
         if (!resp.length > 0) {
             return res.status(404).json({
-                mensagem: "Tabela não encontrada"
+                mensagem: "Tabela não encontrada",
+                tabelasDisponiveis: await mysql.execute("SHOW TABLES")
             })
         }
 
@@ -112,7 +114,8 @@ exports.truncate = async (req, res) => {
         const resp = await mysql.execute(verify)
         if (!resp.length > 0) {
             return res.status(404).json({
-                mensagem: "Tabela não encontrada"
+                mensagem: "Tabela não encontrada",
+                tabelasDisponiveis: await mysql.execute("SHOW TABLES")
             })
         }
 
@@ -140,7 +143,8 @@ exports.addColumn = async (req, res) => {
         const resp = await mysql.execute(verify)
         if (!resp.length > 0) {
             return res.status(404).json({
-                mensagem: "Tabela não encontrada"
+                mensagem: "Tabela não encontrada",
+                tabelasDisponiveis: await mysql.execute("SHOW TABLES")
             })
         }
 
@@ -173,7 +177,8 @@ exports.dropColumn = async (req, res) => {
         const resp = await mysql.execute(verify)
         if (!resp.length > 0) {
             return res.status(404).json({
-                mensagem: "Tabela não encontrada"
+                mensagem: "Tabela não encontrada",
+                tabelasDisponiveis: await mysql.execute("SHOW TABLES")
             })
         }
 
@@ -200,14 +205,22 @@ exports.renameTable = async (req, res) => {
         //verefica se no body foi enviado 'table'
         if (!req.body.table) {
             setTable(res)
-        }      
+        }
 
         //Verifica se a tabela já existe no banco de dados
         const verify = "SELECT TABLE_NAME FROM information_schema.tables WHERE table_NAME ='" + req.body.table + "'"
         const resp = await mysql.execute(verify)
         if (!resp.length > 0) {
             return res.status(404).json({
-                mensagem: "Tabela não encontrada"
+                mensagem: "Tabela não encontrada",
+                tabelasDisponiveis: await mysql.execute("SHOW TABLES")
+            })
+        }
+
+        //Veririfica se o nome da tabela que sera modificada foi informado
+        if (!req.body.rename) {
+            return res.status(206).json({
+                mensagem: "Nome da tabela que irá substituir a existente faltando"
             })
         }
 
@@ -231,8 +244,7 @@ exports.renameTable = async (req, res) => {
 
 exports.selectTable = async (req, res) => {
     try {
-        let coluna = ""
-        //verefica se no body foi enviado 'table'
+        //verifica se no body foi enviado 'table'
         if (!req.query.table) {
             setTable(res)
         }
@@ -242,19 +254,29 @@ exports.selectTable = async (req, res) => {
         const resp = await mysql.execute(verify)
         if (!resp.length > 0) {
             return res.status(404).json({
-                mensagem: "Tabela não encontrada"
+                mensagem: "Tabela não encontrada",
+                tabelasDisponiveis: await mysql.execute("SHOW TABLES")
             })
         }
 
-        const query = "SELECT * FROM " + req.query.table       
-        const result = await mysql.execute(query)
+        const query = "SELECT * FROM " + req.query.table
+
+        try {
+            const result = await mysql.execute(query)
+        } catch (error) {
+            return res.status(500).json({
+                error: error,
+                tabelasDisponiveis: await mysql.execute("SHOW TABLES")
+            })
+        }
+
 
         const response = {
             quantity: result.length,
-            request : {
-                tipo : 'GET',
-                descricao : "Mostra todos os produtos",
-                url: "http://" + process.env.HOST + ":" + process.env.PORTDB + "/newtable?table=" + req.query.table
+            request: {
+                tipo: 'GET',
+                descricao: "Mostra todos os produtos",
+                url: "http://" + process.env.HOST + ":" + process.env.PORTDB + "/newtable?table=" + req.params.table
             }
         }
 
@@ -264,6 +286,102 @@ exports.selectTable = async (req, res) => {
         return res.status(500).json({ error: error })
     }
 }
+
+exports.insertInto = async (req, res) => {
+
+    //verifica se no body foi enviado 'table'
+    if (!req.body.table) {
+        setTable(res)
+    }
+
+     //Verifica se a tabela já existe no banco de dados
+     const verify = "SELECT TABLE_NAME FROM information_schema.tables WHERE table_NAME ='" + req.body.table + "'"
+     const resp = await mysql.execute(verify)
+     if (!resp.length > 0) {
+         return res.status(404).json({
+             mensagem: "Tabela não encontrada",
+             tabelasDisponiveis: await mysql.execute("SHOW TABLES")
+         })
+     }
+
+    const arrayList = []
+
+    const describe = await mysql.execute('describe ' + req.body.table)
+
+    //captura os nomes da coluna da tabela e joga dentro de um array
+    for (let x = 0; x < describe.length; x++) {
+        arrayList.push(describe[x].Field)
+    }
+
+    let query = "INSERT INTO " + req.body.table + " ("
+    let finalQuery = ""
+
+    for (let x = 0; x < arrayList.length; x++) {
+        query += arrayList[x]
+        finalQuery += verifyColumTable(req, arrayList[x])
+        if (x < arrayList.length - 1) {
+            query += ", "
+            finalQuery += ", "
+        } else {
+            query += ") VALUES ("
+            finalQuery += ")"
+        }
+    }
+
+
+    query += finalQuery
+
+    const result = await mysql.execute(query)
+
+    const response = {
+        mensagem: "cadastro inserido com sucesso",
+
+        request: {
+            tipo: 'GET'
+        }
+    }
+
+    return res.status(201).json(response)
+
+
+}
+
+// **** FUNCTIONS ****
+
+//retorna o valor da coluna
+function verifyColumTable(req, Column) {
+    if (req.body[Column]) {
+        return '"' + req.body[Column] + '"'
+    }
+    return "null"
+}
+
+/* async function verifyTable(req, res, type) {
+    let getType = ""   
+    if (type == "query") {
+        getType = req.query.table
+    }else {
+         getType = req.body.table
+    }
+
+    //Verifica se a tabela já existe no banco de dados
+    const verify = "SELECT TABLE_NAME FROM information_schema.tables WHERE table_NAME ='" + getType + "'"
+    try {
+        const resp = await mysql.execute(verify)
+        if (!resp.length > 0) {
+            return res.status(404).json({
+                mensagem: "Tabela não encontrada",
+                tabelasDisponiveis: await mysql.execute("SHOW TABLES")
+            })
+        }
+    } catch (error) {
+        return res.status(500).json({
+            mensagem: "Problema ao tentar verificar tabela no banco de dados",
+            error: error
+        })
+    }
+
+} */
 
 
 function setTable(res) {

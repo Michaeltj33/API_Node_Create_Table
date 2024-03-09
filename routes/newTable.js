@@ -9,6 +9,7 @@ router.get('/',newTableController.showTable)
 router.post('/create',newTableController.CreateTable)
 router.post('/addcolumn',newTableController.addColumn)
 router.post('/rename',newTableController.renameTable)
+router.post('/insertinto',newTableController.insertInto)
 
 router.delete('/droptable', newTableController.dropTable)
 router.delete('/dropcolumn', newTableController.dropColumn)
